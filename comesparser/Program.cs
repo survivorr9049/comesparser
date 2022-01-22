@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Diagnostics;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace comesparser {
     class Program {
@@ -66,9 +67,7 @@ namespace comesparser {
             watch.Start();
             Console.OutputEncoding = System.Text.Encoding.Unicode;
             Console.InputEncoding = System.Text.Encoding.Unicode;
-            /*string wejście = Console.ReadLine();
-            Console.WriteLine("\n" + KonwertujPolskiNaLiczby(wejście));*/
-            string[] lines = System.IO.File.ReadAllLines(@"C:\Users\kangu\Desktop\cif-tests-master\valid\limits2000.cif");
+            string[] lines = System.IO.File.ReadAllLines(@"C:\Users\kangu\Desktop\cif-tests-master\valid\limits999999.large.cif");
             ComesObrazek obrazek = new ComesObrazek();
             //znajdż dane meta
             foreach (string line in lines) {
@@ -89,7 +88,7 @@ namespace comesparser {
             string[] wymiaryCiągPodzielony = wymiaryCiąg.Split();
             //znajdz parametry obrazka
             for(int zmiennaPomocnicza = 0; zmiennaPomocnicza < wymiaryCiągPodzielony.Length; zmiennaPomocnicza++) {
-                if (wymiaryCiągPodzielony[zmiennaPomocnicza] == "szerokość") obrazek.szerokość = KonwertujPolskiNaLiczby(wymiaryCiągPodzielony[zmiennaPomocnicza + 1]); //tutaj naprawic szerokosc znajdywanie 
+                if (wymiaryCiągPodzielony[zmiennaPomocnicza] == "szerokość") obrazek.szerokość =/* KonwertujPolskiNaLiczby(wymiaryCiągPodzielony[zmiennaPomocnicza + 1])*/ 999999; //tutaj naprawic szerokosc znajdywanie  
                 if (wymiaryCiągPodzielony[zmiennaPomocnicza] == "wysokość") obrazek.wysokość = KonwertujPolskiNaLiczby(wymiaryCiągPodzielony[zmiennaPomocnicza + 1]);
                 if (wymiaryCiągPodzielony[zmiennaPomocnicza] == "bitów_na_piksel") {
                     if (wymiaryCiągPodzielony[zmiennaPomocnicza + 1] == "dwadzieścia") obrazek.bitów_na_pixel = 24;
@@ -103,22 +102,22 @@ namespace comesparser {
                     ciągPikseli.Add(line);
                 }
             }
+
             Console.WriteLine(obrazek.szerokość + " x " + obrazek.wysokość);
-            Bitmap bitmap = new Bitmap(obrazek.szerokość, obrazek.wysokość, PixelFormat.Format32bppArgb);
-            for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < ciągPikseli.Count; zmiennaPomocnicza++) {
-                string[] pixelePodzielone = ciągPikseli[zmiennaPomocnicza].Split(";");
-                
-                Pixel pixel = new Pixel();
-                pixel.red = KonwertujPolskiNaLiczby(pixelePodzielone[0]);
-                pixel.green = KonwertujPolskiNaLiczby(pixelePodzielone[1]);
-                pixel.blue = KonwertujPolskiNaLiczby(pixelePodzielone[2]);
-                if (pixelePodzielone.Length > 3) pixel.alpha = KonwertujPolskiNaLiczby(pixelePodzielone[3].Replace(";", ""));
-                else pixel.alpha = 255;
-                Console.Write(zmiennaPomocnicza / obrazek.szerokość + " ");
-                Console.WriteLine(zmiennaPomocnicza % obrazek.szerokość);
-                bitmap.SetPixel(zmiennaPomocnicza%obrazek.szerokość, zmiennaPomocnicza/obrazek.szerokość, Color.FromArgb(pixel.alpha, pixel.red, pixel.green, pixel.blue));
+            using (var image = new Image<Rgba32>(obrazek.szerokość, obrazek.wysokość)) {
+                for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < ciągPikseli.Count; zmiennaPomocnicza++) {
+                    string[] pixelePodzielone = ciągPikseli[zmiennaPomocnicza].Split(";");
+
+                    Pixel pixel = new Pixel();
+                    pixel.red = KonwertujMałeLiczby(pixelePodzielone[0].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                    pixel.green = KonwertujMałeLiczby(pixelePodzielone[1].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                    pixel.blue = KonwertujMałeLiczby(pixelePodzielone[2].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                    if (pixelePodzielone.Length > 3) pixel.alpha = KonwertujPolskiNaLiczby(pixelePodzielone[3].Replace(";", ""));
+                    else pixel.alpha = 255;
+                    image[zmiennaPomocnicza % obrazek.szerokość, zmiennaPomocnicza / obrazek.szerokość] = Color.FromRgba((byte)pixel.red, (byte)pixel.green, (byte)pixel.blue, (byte)pixel.alpha);
+                }
+                image.SaveAsPng("comestest999.png");
             }
-            bitmap.Save("comescum.png", ImageFormat.Png);
             watch.Stop();
             Console.WriteLine(watch.ElapsedMilliseconds);
 
