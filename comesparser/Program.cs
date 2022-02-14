@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.PixelFormats;
+
 namespace comesparser {
     class Program {
         public static Dictionary<string, int> konwerter = new Dictionary<string, int>() {
@@ -70,67 +70,77 @@ namespace comesparser {
             Stopwatch czasownik = new Stopwatch();
             Console.OutputEncoding = System.Text.Encoding.Unicode;
             Console.InputEncoding = System.Text.Encoding.Unicode;
-            Console.WriteLine("Podaj ścieżkę do pliku");
-            string wejscie = Console.ReadLine();
-            czasownik.Start();
-            if (!File.Exists(wejscie)){
-                Console.WriteLine($"plik {wejscie} nie został znaleziony");
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Zbyt mało argumentów! Proszę użyć formatu: program <wejscie> <wyjscie>");
                 return;
             }
-            string[] linie = File.ReadAllLines(wejscie);
-                        
-            
+            string wejsciePlik = args[0];
+            czasownik.Start();
+            if (!File.Exists(wejsciePlik)){
+                Console.WriteLine($"plik {wejsciePlik} nie został znaleziony");
+                return;
+            }
+            string[] linie = File.ReadAllLines(wejsciePlik);
             long czasownikWczytanie = czasownik.ElapsedMilliseconds;
             if (!linie[0].StartsWith("CIF:")) {
                 Console.WriteLine("Plik nie jest w formacie CIF.");
                 return;
             }
-            int[] test = WczytajDanePixeli(linie[2]);
-            ComesObrazek obrazek = new ComesObrazek(test[0], test[1], test[2]);
-            List<string> metadane = new List<string>();
-            int pozycjaPixeli = 0;
-            for(int zmiennaPomocnicza = 3; zmiennaPomocnicza < linie.Length; zmiennaPomocnicza++) {
-                if (linie[zmiennaPomocnicza].StartsWith("METADANE")) metadane.Add(linie[zmiennaPomocnicza]);
-                if (linie[zmiennaPomocnicza].Contains(";")) {
-                    pozycjaPixeli = zmiennaPomocnicza;
-                    break;
-                }
-            }
-            List<string> pixele = new List<string>();
-            for(int zmiennaPomocnicza = pozycjaPixeli; zmiennaPomocnicza < linie.Length; zmiennaPomocnicza++) {
-                pixele.Add(linie[zmiennaPomocnicza]);
-            }
-            Pixel pixel = new Pixel();
-            if (obrazek.bitów_na_pixel == 32) {
-                using (var image = new Image<Rgba32>(obrazek.szerokość, obrazek.wysokość)) {
-                    for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < pixele.Count; zmiennaPomocnicza++) {
-                        string[] pixelePodzielone = pixele[zmiennaPomocnicza].Split(";");
-                        pixel.red = KonwertujPixele(pixelePodzielone[0]);
-                        pixel.green = KonwertujPixele(pixelePodzielone[1]);
-                        pixel.blue = KonwertujPixele(pixelePodzielone[2]);
-                        pixel.alpha = KonwertujPixele(pixelePodzielone[3]);
-                        image[zmiennaPomocnicza % obrazek.szerokość, zmiennaPomocnicza / obrazek.szerokość] = Color.FromRgba(pixel.red, pixel.green, pixel.blue, pixel.alpha);
+            try{
+                int[] test = WczytajDanePixeli(linie[2]);
+                ComesObrazek obrazek = new ComesObrazek(test[0], test[1], test[2]);
+                List<string> metadane = new List<string>();
+                int pozycjaPixeli = 0;
+                for (int zmiennaPomocnicza = 3; zmiennaPomocnicza < linie.Length; zmiennaPomocnicza++) {
+                    if (linie[zmiennaPomocnicza].StartsWith("METADANE")) metadane.Add(linie[zmiennaPomocnicza]);
+                    if (linie[zmiennaPomocnicza].Contains(";")) {
+                        pozycjaPixeli = zmiennaPomocnicza;
+                        break;
                     }
-                    image.SaveAsPng("comestest999123.png");
                 }
-            }
-            else {
-                using (var image = new Image<Rgba32>(obrazek.szerokość, obrazek.wysokość)) {
-                    for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < pixele.Count; zmiennaPomocnicza++) {
-                        string[] pixelePodzielone = pixele[zmiennaPomocnicza].Split(";");
-                        pixel.red = KonwertujPixele(pixelePodzielone[0]);
-                        pixel.green = KonwertujPixele(pixelePodzielone[1]);
-                        pixel.blue = KonwertujPixele(pixelePodzielone[2]);
-                        image[zmiennaPomocnicza % obrazek.szerokość, zmiennaPomocnicza / obrazek.szerokość] = Color.FromRgb(pixel.red, pixel.green, pixel.blue);
+                List<string> pixele = new List<string>();
+                for (int zmiennaPomocnicza = pozycjaPixeli; zmiennaPomocnicza < linie.Length; zmiennaPomocnicza++) {
+                    pixele.Add(linie[zmiennaPomocnicza]);
+                }
+                Pixel pixel = new Pixel();
+                if (obrazek.bitów_na_pixel == 32) {
+                    using (var image = new Image<Rgba32>(obrazek.szerokość, obrazek.wysokość)) {
+                        for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < pixele.Count; zmiennaPomocnicza++) {
+                            string[] pixelePodzielone = pixele[zmiennaPomocnicza].Split(";");
+                            pixel.red = KonwertujPixele(pixelePodzielone[0]);
+                            pixel.green = KonwertujPixele(pixelePodzielone[1]);
+                            pixel.blue = KonwertujPixele(pixelePodzielone[2]);
+                            pixel.alpha = KonwertujPixele(pixelePodzielone[3]);
+                            image[zmiennaPomocnicza % obrazek.szerokość, zmiennaPomocnicza / obrazek.szerokość] = Color.FromRgba(pixel.red, pixel.green, pixel.blue, pixel.alpha);
+                        }
+                        if (args[1].Substring(args[1].Length - 4, 4) != ".png") args[1] += ".png";
+                        image.SaveAsPng(args[1]);
                     }
-                    image.SaveAsPng("comestest999123.png");
-                }
+                }//tak
+                else {
+                    using (var image = new Image<Rgb24>(obrazek.szerokość, obrazek.wysokość)) {
+                        for (int zmiennaPomocnicza = 0; zmiennaPomocnicza < pixele.Count; zmiennaPomocnicza++) {
+                            string[] pixelePodzielone = pixele[zmiennaPomocnicza].Split(";");
+                            pixel.red = KonwertujPixele(pixelePodzielone[0]);
+                            pixel.green = KonwertujPixele(pixelePodzielone[1]);
+                            pixel.blue = KonwertujPixele(pixelePodzielone[2]);
+                            image[zmiennaPomocnicza % obrazek.szerokość, zmiennaPomocnicza / obrazek.szerokość] = Color.FromRgb(pixel.red, pixel.green, pixel.blue);
+                        }
+                        if (args[1].Substring(args[1].Length - 4, 4) != ".png") args[1] += ".png";
+                        image.SaveAsPng(args[1]);
+                    }
+                } 
+                czasownik.Stop();
+                Console.WriteLine($"Plik wczytano w: {czasownikWczytanie} ms");
+                Console.WriteLine($"Skonwertwano w: {czasownik.ElapsedMilliseconds - czasownikWczytanie} ms");
+                Console.WriteLine($"Całkowity czas egzekucji: {czasownik.ElapsedMilliseconds} ms");
+                Console.ReadLine();
             }
-            czasownik.Stop();
-            Console.WriteLine($"Plik wczytano w: {czasownikWczytanie} ms");
-            Console.WriteLine($"Skonwertwano w: {czasownik.ElapsedMilliseconds - czasownikWczytanie} ms");
-            Console.WriteLine($"Całkowity czas egzekucji: {czasownik.ElapsedMilliseconds} ms");
-            Console.ReadLine();
+            catch
+            {
+                Console.WriteLine("Coś się popsuło ups :) możesz spróbować ponownie :D"); //podalbym excpetion ale nie xd 
+            }
         }
         public static int[] WczytajDanePixeli(string dane) {
             string[] comesLiczbyPixeli = new string[3];
@@ -164,7 +174,7 @@ namespace comesparser {
             if (pixelSłowa == staryPixel) return staraWartosc;
             staryPixel = pixelSłowa;
             byte comesOutput = 0;
-            string[] słowa = pixelSłowa.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] słowa = pixelSłowa.Split(new char[] {' '}, StringSplitOptions.RemoveEmptyEntries);
             foreach (string comesLiczba in słowa) {
                 comesOutput += (byte)konwerter[comesLiczba];
             }
